@@ -1,4 +1,4 @@
-# MentalHealthInTech_RStudio
+# Analysis of Mental Health in Tech Companies using RStudio
 #### Apoorva Rao Tanjore, Ritika Wadhwa, Shubham Chopade 
 #### 2/16/2022
 
