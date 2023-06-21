@@ -1,0 +1,371 @@
+---
+title: "IE6600_Sec01_Group09_Hackathon"
+author: "Apoorva Rao Tanjore, Ritika Wadhwa, Shubham Chopade"
+date: "2/16/2022"
+output: github_document
+---
+
+```{r setup, include=FALSE, message=FALSE,fig.keep='all'}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+### **Introduction and Problem Statement**
+
+#### The COVID-19 pandemic and the resulting economic recession have negatively affected many people’s mental health and created new barriers for people already suffering from mental illness. Most studies reported psychological effects such as stress, anxiety, fear and loneliness. The mental health disorders such as anxiety and depression can worsen in workplaces. The pandemic has changed the working norm and provided the flexibility to work from home. We are trying to analyse the imapct of work flexibility on mental health amongst employees in tech companies.
+
+#### For this hackathon challenge,we decided to use this dataset to understand how mental health in the workplace is impacted, analyze different demographics including gender, age, geography, examine the frequency of mental health consequences among tech workers and see what are the factors that are affecting employees' mental health and how can companies change few policies to improve the situation. The Opening Sourcing and Mental illness's primary goal is to change how mental health is spoken about in the tech community by spreading awareness, educating about mental disorders, and providing safe and supportive resources for those with mental health issues.
+
+#### The data set consists of 63 variables with a total of 1433 observations. In process of cleaning the data, we observed a few inconsistencies, for example the highest age as 323. Such issues were addressed by cleaning and filtering out data relevant to the study. The data set contains a total of 1433 responses out of which 1059 belong to ‘Male’, 340 belong to ‘Female’ and 34 to the ‘Other’ category. The survey includes responses from multiple states in United States of America and multiple countries worldwide. The survey was conducted online and responses obtained was voluntary responses. Hence, the survey, and the inferences that have been obtained from this data set cannot be generalized for the entire technical industry.
+
+#### The following themes have been covered in this hackathon –
+#### 1. Understanding the demographics about the survey of mental health conducted
+#### 2. Analyzing the responses provided which are mental health and mental health consequences.
+#### 3. Analyzing benefits and wellness programs offered by companies, and behavior of employees with mental health
+
+``` {r, library, include=FALSE}
+#Importing libraries
+library(tidyr)
+library(stringr)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(plotrix)
+library(ggmap)
+library(corrplot)
+library(plotly)
+library(gridExtra)
+library(ggalluvial)
+#install.packages("webshot")
+webshot::install_phantomjs(force=TRUE)
+library(RColorBrewer)
+
+```
+
+
+```{r, include=FALSE}
+getwd()
+```
+
+
+
+### **Section 1 - Analyzing the demographics of the people taking the survey**
+
+#### **Q1- What is the distribution of age and gender of the people taking the survey?**
+#### Insights- The majority of the people taking the survey are in the age group of 20-40 years. There are a very few people over the age 45 years. We also see the majority of the people are Male, and very few are Female and Others.
+
+
+```{r}
+df <- read.csv("survey.csv", na.strings = "")
+#Cleaning data 
+df <- df %>%
+      mutate(Gender = replace(Gender, Gender== "Female ", "Female")) %>%
+      mutate(Gender = replace(Gender, Gender== "Male ", "Male")) 
+#Groupby gender and age and count
+df_age <- df %>%
+          group_by(Age, Gender) %>%
+          summarise(Count=n(), .groups='drop') %>%
+          drop_na()
+ggplot(data=df_age, aes(x= Age, y=Count, fill=Gender, width=0.8)) + 
+  geom_bar(stat="identity") +
+   ggtitle("Age Distribution by Gender")+
+   scale_fill_brewer(palette="Paired")
+```
+
+#### **Q2- Which countries do people taking the survey belong to?**
+#### Insights- The majority of the people are from United States. After United States, we see the maximum responses are from United Kingdom. Other countries that people have taken survey from are Australia, Canada, India, Netherlands, Germany. 
+
+```{r}
+#Groupby country and count
+df_country <- df%>%
+              group_by(Country)%>%
+              summarise(count=n())%>%
+              arrange(-(count))
+top10_country <- head(df_country,10)
+
+#Map
+plot_geo(df_country,
+                     locationmode = "country names") %>%
+                      add_trace(locations = ~Country,
+                      z = ~count,
+                    color = ~count)
+
+```
+
+
+#### **Q3- What are the top 10 countries and top 10 states people are from?**
+#### Insights- We can see from the graph the top 10 countries and the count of responses from each country and top 10 States in US with maximum responses. From the chart we can say that in USA, Calfornia is the state which has the highest number of mental health issues which comprises of 138 responses. Folowed by Washington and Texas which has 70 and 44 responses. 
+
+
+```{r}
+
+ggplot(data=top10_country, 
+       aes(x=count, y="", fill=Country, width=0.3))+ 
+       geom_bar(stat="identity") +
+         ggtitle("Distribution of response of top 10 countries")+
+   scale_fill_brewer(palette="Paired") 
+
+df_state_US <- df %>%
+              filter(Country=="United States") %>%
+              group_by(state) %>%
+              summarise(Count=n()) %>%
+              arrange (desc(Count))
+
+top10_state <- head(df_state_US,10)
+
+ggplot(top10_state, aes(x = "", y = Count, fill = state)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = Count),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") +theme_void() +
+    ggtitle("Distribution of response of top 10 state in USA")+
+     scale_fill_brewer(palette="Paired")
+
+
+```
+
+
+#### **Q4-How many people who have taken the survey are from tech companies?**
+#### Insights- The majority of the responses are from people in tech companies. 1031 responses out of 1289 ~ 80% are employees of tech companies. 
+
+
+```{r}
+df_tech <- df%>%
+           group_by(tech_company)%>%
+           summarise(Count=n())
+
+ggplot(df_tech, aes(x = "", y = Count, fill = tech_company)) +
+  geom_col(color = "black") +
+  geom_text(aes(label = Count),
+            position = position_stack(vjust = 0.5)) +
+  coord_polar(theta = "y") +theme_void() +
+   ggtitle("Count of responses from Tech Company ")+ 
+     scale_fill_brewer(palette="Paired") +
+    guides(fill=guide_legend(title="Tech Company"))
+
+      
+```
+
+
+### **Section 2- Analyzing the factors that are likely to cause mental health consequences**
+
+#### **Q1- Does Family History, Remote Work, Leave Policy, Anonymity Clause have any effect of mental health?**
+#### Insights- From the 1st chart we can say that family history is not a factor to be considered for mental health consequence. From the 2nd plot,we can say that less number of employees reported that they might be affected by mental health issues while working remotely.From 3rd chart we can observe that it in companies where it's very diffcult to avail for leaves, more people have responded yes for Mental Health Consequences. We see that Leave Policy, and Remote Work are important factors in affecting employees' mental health. 
+
+
+```{r, include=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+df_famhist <- df %>% 
+              group_by(family_history, mental_health_consequence) %>%
+              summarise(Count=n())
+p1 <- ggplot(df_famhist, aes(x=family_history, y=Count, fill=mental_health_consequence)) + 
+      geom_bar(stat="identity", position="dodge") +
+      guides(fill=guide_legend(title="Mental Health")) +
+      ggtitle("Family History vs Responses")+
+      scale_fill_brewer(palette="Set1") +
+      xlab("Family History")
+
+df_remotework <- df %>% 
+              group_by(remote_work, mental_health_consequence) %>%
+              summarise(Count=n())
+p2 <- ggplot(df_remotework, aes(x=remote_work, y=Count, fill=mental_health_consequence)) + 
+      geom_bar(stat="identity", position="dodge") +
+      guides(fill=guide_legend(title="Mental Health")) +
+      ggtitle("Remote Work vs Responses")+
+      scale_fill_brewer(palette="Set1") +
+      xlab("Remote Work")
+
+df_leave <- df %>% 
+              group_by(leave, mental_health_consequence) %>%
+              summarise(Count=n())
+p3 <- ggplot(df_leave, aes(x=leave, y=Count, fill=mental_health_consequence)) + 
+      geom_bar(stat="identity", position="dodge") +
+      guides(fill=guide_legend(title="Mental Health")) +
+       ggtitle("Leave Difficulty vs Responses")+
+      scale_fill_brewer(palette="Set1") + 
+      xlab("Leave Difficulty")
+
+df_anon <- df %>% 
+              group_by(anonymity, mental_health_consequence) %>%
+              summarise(Count=n())
+p4 <- ggplot(df_anon, aes(x=as.factor(anonymity), y=Count, fill=mental_health_consequence)) + 
+      geom_bar(stat="identity", position="dodge") +
+     guides(fill=guide_legend(title="Mental Health")) +
+     ggtitle("Anonymity vs Responses")+
+      scale_fill_brewer(palette="Set1") +
+      xlab("Anonymity Clause")
+     
+
+grid.arrange(p1,p2, ncol = 2)
+grid.arrange(p3,p4, ncol = 2)
+
+```
+
+
+#### **Q2- Are benefits provided by the companies providing any help in terms of mental health consequence?**
+#### Insights- - From the chart we are trying to understand if the benefits provided by the companies helping the employees. We notice that the companies which do not offer benefits or wellness programs have more number of employees with mental health consequences than the ones which do offer these benefits or have wellness programs. We can say these are important factors which are affecting mental health of employees. 
+
+
+```{r, include=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+#Q2 
+df_data <- df %>%
+  group_by(benefits,wellness_program,mental_health_consequence) %>%
+summarise(count=n())
+df_benefits <- ggplot(data=df_data,aes(x=benefits,y=count,fill=mental_health_consequence)) + geom_bar(stat = "identity") + coord_flip() +
+  ggtitle("Benefits vs Mental Health Cosequence")+
+   scale_fill_brewer(palette="Set1") +
+   ylab("Benefits") +
+     guides(fill=guide_legend(title="Mental Health"))
+
+df_wellness <- ggplot(data=df_data,aes(x=wellness_program,y=count,fill=mental_health_consequence)) + geom_bar(stat = "identity") + coord_flip() +
+   ggtitle("Wellness vs Mental Health Consequence")+
+     scale_fill_brewer(palette="Set1") +
+    ylab("Wellness Program") +
+     guides(fill=guide_legend(title="Mental Health"))
+
+grid.arrange(df_benefits, df_wellness, nrow = 2)
+
+```
+
+
+### **Section 3 - Analyzing benefits and wellness programs offered by companies, and behavior of employees with mental health.**
+#### **Q1 - How many companies offer Benefits and Wellness Programs based on the company size?** 
+#### Insights - It was seen that overall large companies (More than 1000 employees) offer more Benefits and Wellness Programs when compared to Small(26-100 employees) and Mid-sized (100-1000 employees) companies. Majority of the small companies do not offer both Benefits or Wellness Programs.
+
+
+```{r, include=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+df_size <- df %>%
+           mutate(no_employees = replace(no_employees, no_employees== "More than 1000", "Large")) %>%
+           mutate(no_employees = replace(no_employees, no_employees== "26-100", "Small")) %>%
+           mutate(no_employees = replace(no_employees, no_employees== "100-500" | no_employees == "500-1000", "Mid")) %>%
+             mutate(no_employees = replace(no_employees, no_employees== "25-Jun" | no_employees == "5-Jan", "NA"))
+df_size <- df_size %>%
+             group_by(no_employees, benefits, wellness_program) %>%
+             summarise(count=n()) %>%
+             filter(no_employees != "NA")
+size_benefits <- ggplot(df_size, aes(x=no_employees, y=count, fill=benefits)) +
+             geom_bar(stat="identity", position="dodge") +
+             ggtitle("Count of companies offering Benefits") +
+             xlab("Company Size") + ylab("Count") +
+             guides(fill=guide_legend(title="Benefits offered")) +
+             scale_fill_brewer(palette="Pastel1")
+
+size_wellness <- ggplot(df_size, aes(x=no_employees, y=count, fill=wellness_program)) +
+             geom_bar(stat="identity", position="dodge") +
+             ggtitle("Count of companies offering Wellness 
+                     Program") +
+            xlab("Company Size") + ylab("Count") +
+             guides(fill=guide_legend(title="Wellness Program")) +
+             scale_fill_brewer(palette="Pastel1")
+
+grid.arrange(size_benefits, size_wellness, ncol = 2)
+```
+
+
+#### **Q2- How many employees with mental health consequence seek help or take treatment?**
+#### Insights - Out of 292 employees who answered yes for mental health, 174 employees (~60%) seek treatment and only 47 employees (~16%) seek help in workplace. We see that even though employees are getting treatment, most of the employees don't seek for help in workplace. 60% of the employees replied with no when asked if they seek help in workplace.
+
+
+```{r, include=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+#Q1participant who have mental health but don't take treatment or seek help
+
+df1 <- df%>%
+       group_by(mental_health_consequence, treatment)%>%
+       summarize(Count=n()) %>%
+       filter(mental_health_consequence=="Yes")
+      
+df1$fraction = df1$Count / sum(df1$Count)
+df1$ymax = cumsum(df1$fraction)
+df1$ymin = c(0, df1$ymax[1:(nrow(df1)-1)])
+df1$labelPosition <- (df1$ymax + df1$ymin) / 2
+df1$label <- paste0(df1$treatment, "\n ", df1$Count)
+treatment <- ggplot(df1, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill = treatment)) +
+  geom_rect() +
+  coord_polar(theta="y") + 
+  xlim(c(1, 4)) +
+  geom_label( x=3.5, aes(y=labelPosition, label=label), size=3.5) +
+  theme_void() +
+  ggtitle("Seeking Treatment") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette="Pastel1")
+
+df_help <- df%>%
+       group_by(mental_health_consequence, seek_help)%>%
+       summarize(Count=n()) %>%
+       filter(mental_health_consequence=="Yes")
+      
+df_help$fraction = df_help$Count / sum(df_help$Count)
+df_help$ymax = cumsum(df_help$fraction)
+df_help$ymin = c(0, df_help$ymax[1:(nrow(df_help)-1)])
+df_help$labelPosition <- (df_help$ymax + df_help$ymin) / 2
+df_help$label <- paste0(df_help$seek_help, "\n ", df_help$Count)
+help <- ggplot(df_help, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill = seek_help)) +
+  geom_rect() +
+  coord_polar(theta="y") + 
+  xlim(c(1, 4)) +
+  geom_label( x=3.5, aes(y=labelPosition, label=label), size=3.5) +
+  theme_void() +
+  ggtitle("Seek Help") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  theme(legend.position = "none") +
+  scale_fill_brewer(palette="Pastel1")
+
+grid.arrange(treatment, help, ncol = 2)
+
+```
+
+
+#### **Q3 - Does anonymity clause affect employees' decision on seeking help or talking to a supervisor?**
+#### Insights - We see that an anaonymity clause has a high effect on decisions taken by employees on seeking help or talking to the supervisor. Even though a low proportion of people are seeking help or talking to supervisor, most of the employees are those have answered Yes or Don't Know for the anonymity class. Very few employees from companies which don't have an anonymity close are seeking help or Talking to a Supervisor. 
+
+
+```{r, message=FALSE, warning=FALSE, error=FALSE}
+
+anon <- df %>%
+        group_by(Gender, anonymity, seek_help, supervisor, mental_health_consequence) %>%
+        summarise(count= n()) %>%
+        filter(mental_health_consequence == "Yes")
+anon_seekhelp <- ggplot(anon,aes(y=count,axis1 = anonymity,axis2 = seek_help)) + 
+  geom_alluvium(aes(fill = Gender),width=1/5) +
+  geom_stratum(width= 1/3,fill = "white",color = "grey") +
+  geom_text(stat = "stratum",aes(label = after_stat(stratum)),size=4) +
+  scale_x_discrete(limits = c("Anonymity","Seek Help"),expand = c(.05,.05)) +
+  ggtitle("Anonymity vs Seeking Help by Gender") +
+  ylab("Count") +
+ scale_fill_brewer(palette="Pastel1")
+
+
+anon_supervisor <- ggplot(anon,aes(y=count,axis1 = anonymity,axis2 = supervisor)) + 
+  geom_alluvium(aes(fill = Gender),width=1/5) +
+  geom_stratum(width= 1/3,fill = "white",color = "grey") +
+  geom_text(stat = "stratum",aes(label = after_stat(stratum)),size=4) +
+  scale_x_discrete(limits = c("Anonymity","Talk to Supervisor"),expand = c(.05,.05)) +
+  ggtitle("Anonymity vs Talking to Supervisor by Gender") +
+  ylab("Count") +
+ scale_fill_brewer(palette="Pastel1")
+
+grid.arrange(anon_seekhelp, anon_supervisor, nrow = 2) 
+
+```
+
+### **Summary and Conclusion**
+
+#### To summarize, we conducted the following analysis:
+
+#### Section 1: Analyzing the demographics of people taking the survey. Q1: What is age and gender distribution of people taking the survey? Q2: Which countries do people taking the survey belong to? Q3: Which are the top 10 countries and top 10 states people are from? Q4: How many people are from tech companies? 
+
+#### Section 2: Analyzing the factors that are likely to cause mental health consequences. Q1: Does Family History, Remote Work, Leave Policy, Anonymity Clause have any effect of mental health? Q2: Are benefits provided by the companies providing any help in terms of mental health consequence?
+
+#### Section 3: Analyzing benefits and wellness programs offered by companies, and behavior of employees with mental health. Q1: How many companies offer Benefits and Wellness Programs based on the company size? Q2: How many employees with mental health consequence seek help or take treatment? Q3: Does anonymity clause affect employees' decision on seeking help or talking to a supervisor?
+
+#### In Section 1, we tried to understand the demographics of people who have taken the survey of mental health. We saw most of the responses are from employees in United states. The other countries with high responses are United Kingdom, Germany and Canada. In US, majority of responses are from Calfornia, Washington and Texas. The majority age group was seen to be 20-40 years, with majority of Male. Major responses were from employees working in technology based companies. 
+
+#### In Section 2, we tried to see what are the factors that are affecting the mental health of employees. In Q1, we saw that the difficulty in getting a leave from work and whether they are working remotely or not are the two factors that are affecting mental health. Employees from workplaces where its difficult to get a leave have reported more mental health consequences than the employees from workplace where its easy to get a leave. Similarly, more employees who don't work remotely have responsed Yes for mental health consequences. In Q2, we saw that companies that do not offer benefits or wellness programs have higher reports of mental health consequences. 
+
+#### In Section 3, we tried to determine the benefits and wellness programs provided in companies based on their sizes. We observed that large scale companies offer more benefits and wellness program in comparison to small and mid sized comapnies. Further we tried to determine how many employees seek help for mental health issues. We noticed that 60% of the employees who have reported mental health consequences are not seeking help at workplace. To determine a cause, in Q3, we saw anonymity was a factor considered by the employees when deciding to seek help or talk to someone. More employees were seen to seek help or talk to a supervisor at workplace when there is an anonymity clause.
+
+#### Companies can reduce mental health consequences by taking steps offering more benefits and wellness programs, and improving leave policy to make it easier to apply for leave for mental health. Anonymity should be maintained so employees feel comfortable in seeking help and talking to a supervisor when necessary. 
+
+
+#### **References**
+#### 1. Open Sourcing Mental Illness, LTD (2017). Mental Health In Tech Survey, Version 3. Retrieved February 16, 2022 from https://www.kaggle.com/osmi/mental-health-in-tech-survey.
